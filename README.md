@@ -272,7 +272,7 @@ let simd_tables = lut.to_simd_tables();
 let mut distances = vec![0.0f32; num_points];
 simd_tables.compute_distances_batch(packed.data(), num_points, &mut distances);
 
-// Throughput: ~80M lookups/sec with AVX2
+// See "Performance" below for measured throughput on this machine.
 ```
 
 ### Quantization
@@ -575,7 +575,7 @@ fn large_scale_search() -> Result<()> {
 
     let searcher = TreeXHybridSearcher::new(&dataset, config)?;
 
-    // Search is now ~20x faster than brute force
+    // Search is approximate and typically faster than brute force.
     let results = searcher.search(&query, 10)?;
 
     Ok(())
@@ -599,7 +599,7 @@ fn memory_efficient_search() -> Result<()> {
 
     println!("Memory usage: {} MB", searcher.memory_usage() / 1_000_000);
 
-    // Search with ~99% recall
+    // Search with quantized vectors (accuracy depends on your data/config).
     let results = searcher.search(&query, 10)?;
 
     Ok(())
@@ -625,7 +625,7 @@ fn high_throughput_search() -> Result<()> {
         process_results(&results)?;
     }
 
-    // Achieves ~47k QPS on 10k point dataset
+    // Batched search is usually much higher throughput than sequential queries.
     Ok(())
 }
 ```
@@ -657,24 +657,35 @@ fn streaming_index() -> Result<()> {
 
 ## Performance
 
-Benchmarks on AMD Ryzen 9 / Intel Xeon (AVX2 enabled):
+Machine used for these numbers:
+- CPU: Intel(R) Xeon(R) Platinum 8260 CPU @ 2.40GHz (2 sockets, 48 cores / 96 threads)
+- SIMD: AVX2 available
+- RAM: 123 GiB
+- OS: Linux 6.14.0-37-generic (x86_64)
 
-| Operation | Dataset | Time | Throughput |
-|-----------|---------|------|------------|
-| Brute Force (k=10) | 10k x 64d | 340 µs/query | 2,941 QPS |
-| Batched Search (100 queries) | 10k x 64d | 2.1 ms | 47,619 QPS |
-| Scalar Quantized | 10k x 128d | 262 µs/query | 3,817 QPS |
-| SIMD Dot Product | 128d | 12 ns | 83M ops/sec |
-| LUT16 Batch | 1k points | 21 µs | 48M lookups/sec |
-| Int8 Asymmetric | 10k x 128d | 178 µs | 56M pts/sec |
+Commands:
 
-### Speedup vs Scalar
+```bash
+cargo test -q
+cargo bench --bench scann_benchmark
+```
 
-| Operation | Scalar | SIMD (AVX2) | Speedup |
-|-----------|--------|-------------|---------|
-| Dot Product 64d | 40 ns | 7 ns | 5.7x |
-| Dot Product 128d | 99 ns | 12 ns | 8.2x |
-| Dot Product 512d | 507 ns | 49 ns | 10.3x |
+Criterion medians from this machine:
+
+| Operation | Benchmark | Time (median) | Throughput |
+|-----------|-----------|---------------|------------|
+| Brute Force (k=10, 10 queries) | `brute_force/search_k10/10000` | 1.3753 ms | 7,271 queries/s |
+| Batched Search (100 queries) | `batched_search/batched` | 885.45 us | 112,937 queries/s |
+| Scalar Quantized (k=10, 10 queries) | `scalar_quantized/int8_quantized/10000` | 2.2031 ms | 4,539 queries/s |
+| SIMD Dot Product | `simd/dot_product/128` | 11.739 ns | 85.2M ops/s |
+| LUT16 Batch (1k points, 16 subspaces) | `lut16/batch_distances/16` | 20.595 us | 48.6M lookups/s |
+| Int8 Asymmetric (10k x 128d) | `one_to_many_asymmetric/int8_squared_l2` | 180.11 us | 55.5M points/s |
+
+### Observed Speedups
+
+| Comparison | Speedup |
+|------------|---------|
+| Batched vs sequential (`batched_search`) | 16.4x faster |
 
 ## Feature Flags
 
