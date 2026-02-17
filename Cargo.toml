@@ -1,0 +1,106 @@
+[package]
+name = "scann"
+version = "0.1.0"
+edition = "2021"
+authors = ["ScaNN Rust Port"]
+description = "Scalable Nearest Neighbors - A Rust port of Google's ScaNN library"
+license = "Apache-2.0"
+repository = "https://github.com/google-research/google-research/tree/master/scann"
+keywords = ["nearest-neighbors", "vector-search", "similarity", "machine-learning", "simd"]
+categories = ["algorithms", "science", "data-structures"]
+
+[lib]
+name = "scann"
+path = "src/lib.rs"
+
+[features]
+default = ["simd"]
+simd = []
+avx2 = ["simd"]
+avx512 = ["simd", "avx2"]
+nightly = []
+
+[dependencies]
+# Error handling
+thiserror = "1.0"
+
+# Parallelism
+rayon = "1.8"
+
+# Random number generation
+rand = "0.8"
+rand_distr = "0.4"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+
+# Numeric traits
+num-traits = "0.2"
+
+# Ordered floats for sorting
+ordered-float = "4.2"
+
+# Logging
+log = "0.4"
+
+# SIMD support (portable)
+wide = "0.7"
+
+# Memory alignment
+aligned-vec = "0.6"
+
+# Linear algebra (for PCA, projections, etc.)
+nalgebra = "0.33"
+
+# Half-precision floats (BFloat16, Float16)
+half = { version = "2.4", features = ["std", "serde"] }
+
+# Bit manipulation
+bitvec = "1.0"
+
+# Lock-free data structures
+crossbeam = "0.8"
+dashmap = "6.0"
+arc-swap = "1.7"
+
+# Indexmap for ordered hash maps
+indexmap = { version = "2.2", features = ["serde"] }
+
+# Smallvec for stack-allocated vectors
+smallvec = { version = "1.13", features = ["serde"] }
+
+[dev-dependencies]
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.4"
+approx = "0.5"
+
+# Benchmarking utilities
+rand_xoshiro = "0.6"
+
+[[bench]]
+name = "scann_benchmark"
+harness = false
+
+[[example]]
+name = "basic_bruteforce"
+path = "examples/basic_bruteforce.rs"
+
+[[example]]
+name = "batched_search"
+path = "examples/batched_search.rs"
+
+[[example]]
+name = "partitioned_search"
+path = "examples/partitioned_search.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench]
+opt-level = 3
+lto = true
