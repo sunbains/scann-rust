@@ -233,7 +233,6 @@ pub fn one_to_many_squared_l2_strided<T: DatapointValue>(
     results: &mut [f32],
 ) {
     debug_assert!(results.len() >= num_points);
-    let _dim = query.len();
 
     #[cfg(feature = "simd")]
     {
@@ -242,6 +241,7 @@ pub fn one_to_many_squared_l2_strided<T: DatapointValue>(
 
     #[cfg(not(feature = "simd"))]
     {
+        let dim = query.len();
         for i in 0..num_points {
             let offset = i * stride;
             let mut sum = 0.0f32;
