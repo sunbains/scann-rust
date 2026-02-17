@@ -674,18 +674,60 @@ Criterion medians from this machine:
 
 | Operation | Benchmark | Time (median) | Throughput |
 |-----------|-----------|---------------|------------|
-| Brute Force (k=10, 10 queries) | `brute_force/search_k10/10000` | 1.3753 ms | 7,271 queries/s |
-| Batched Search (100 queries) | `batched_search/batched` | 885.45 us | 112,937 queries/s |
-| Scalar Quantized (k=10, 10 queries) | `scalar_quantized/int8_quantized/10000` | 2.2031 ms | 4,539 queries/s |
-| SIMD Dot Product | `simd/dot_product/128` | 11.739 ns | 85.2M ops/s |
-| LUT16 Batch (1k points, 16 subspaces) | `lut16/batch_distances/16` | 20.595 us | 48.6M lookups/s |
-| Int8 Asymmetric (10k x 128d) | `one_to_many_asymmetric/int8_squared_l2` | 180.11 us | 55.5M points/s |
+| Brute Force (k=10, 10 queries) | `brute_force/search_k10/10000` | 1.4017 ms | 7,134 queries/s |
+| Batched Search (100 queries) | `batched_search/batched` | 847.87 us | 117,943 queries/s |
+| Scalar Quantized (k=10, 10 queries) | `scalar_quantized/int8_quantized/10000` | 2.2056 ms | 4,534 queries/s |
+| SIMD Dot Product | `simd/dot_product/128` | 11.705 ns | 85.4M ops/s |
+| LUT16 Batch (1k points, 16 subspaces) | `lut16/batch_distances/16` | 20.556 us | 48.6M lookups/s |
+| Int8 Asymmetric (10k x 128d) | `one_to_many_asymmetric/int8_squared_l2` | 184.21 us | 54.3M points/s |
 
 ### Observed Speedups
 
 | Comparison | Speedup |
 |------------|---------|
-| Batched vs sequential (`batched_search`) | 16.4x faster |
+| Batched vs sequential (`batched_search`) | 16.9x faster |
+
+### ANN-Benchmarks Style Runner (Rust)
+
+This repository includes a Rust-native ANN-Benchmarks-style harness:
+
+```bash
+cargo run --release --bin ann_benchmark -- --help
+```
+
+The runner reports build time, search time, QPS, recall@k, and RSS delta.  
+Inputs can be:
+- synthetic data generated in-process, or
+- a JSON file with `train`, `test`, and `neighbors` arrays.
+
+Example (synthetic run, `k=10`, 10k train, 200 queries, 64 dims):
+
+```bash
+cargo run --release --bin ann_benchmark -- --algorithm brute-force --distance squared-l2 --k 10 --synthetic-train 10000 --synthetic-test 200 --dim 64 --seed 42
+```
+
+Results from this machine:
+
+| Algorithm | Build Time | Search Time | QPS | Recall@10 |
+|-----------|------------|-------------|-----|-----------|
+| `brute-force` | 0.003104 s | 0.025753 s | 7,766 | 1.0000 |
+| `partitioned` | 0.154911 s | 0.010971 s | 18,230 | 0.4100 |
+| `hashed` | 0.740047 s | 0.031187 s | 6,413 | 0.3195 |
+| `tree-ah` | 0.848969 s | 0.027046 s | 7,395 | 0.2260 |
+
+If you have ANN-Benchmarks HDF5 datasets, convert them once to JSON for this runner:
+
+```python
+import h5py, json
+with h5py.File("sift-128-euclidean.hdf5", "r") as f:
+    payload = {
+        "train": f["train"][:].tolist(),
+        "test": f["test"][:].tolist(),
+        "neighbors": f["neighbors"][:].tolist(),
+    }
+with open("sift-128-euclidean.json", "w") as out:
+    json.dump(payload, out)
+```
 
 ## Feature Flags
 
